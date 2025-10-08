@@ -34,6 +34,7 @@ struct Professeur {
 class DossierProfesseur {
 private:
     Professeur* tete;
+    bool listeVide;
 
     // Fonction pour compter les etudiants d'un professeur
     int compterEtudiants(Etudiants* liste) const {
@@ -79,14 +80,21 @@ private:
 
 public:
     // Constructeur
-    DossierProfesseur(const char* PF) : tete(nullptr) {
+    DossierProfesseur(const char* PF) : tete(nullptr), listeVide(true) {
+        cout << "\n[INFO] Tentative d'ouverture du fichier: " << PF << endl;
+
         ifstream fichier(PF);
         if (!fichier.is_open()) {
-            cout << "Erreur: Impossible d'ouvrir le fichier " << PF << endl;
+            cout << "\n[EXCEPTION] Impossible d'ouvrir le fichier " << PF << endl;
+            cout << "[EXCEPTION] Le programme continuera avec une liste vide." << endl;
             return;
         }
 
+        cout << "[INFO] Fichier " << PF << " ouvert avec succes." << endl;
+
         string ligne;
+        int nbProfsCharges = 0;
+
         while (getline(fichier, ligne)) {
             if (ligne.empty()) continue;
 
@@ -103,6 +111,7 @@ public:
 
             // Lire les cours jusqu'au &
             Cours* dernierCours = nullptr;
+            int nbCours = 0;
             while (getline(fichier, ligne) && ligne != "&") {
                 if (!ligne.empty()) {
                     Cours* nouveauCours = new Cours(ligne);
@@ -113,11 +122,13 @@ public:
                         dernierCours->suivant = nouveauCours;
                     }
                     dernierCours = nouveauCours;
+                    nbCours++;
                 }
             }
 
             // Lire les etudiants jusqu'au &
             Etudiants* dernierEtudiant = nullptr;
+            int nbEtudiants = 0;
             while (getline(fichier, ligne) && ligne != "&") {
                 if (!ligne.empty()) {
                     Etudiants* nouvelEtudiant = new Etudiants(ligne);
@@ -128,19 +139,35 @@ public:
                         dernierEtudiant->suivant = nouvelEtudiant;
                     }
                     dernierEtudiant = nouvelEtudiant;
+                    nbEtudiants++;
                 }
             }
 
             // Ajouter a la fin pour maintenir l'ordre
             ajouterALaFin(nouveauProf);
+            nbProfsCharges++;
+            listeVide = false;
+
+            cout << "[INFO] Professeur charge: " << nouveauProf->nom
+                << " (" << nbCours << " cours, " << nbEtudiants << " etudiants)" << endl;
         }
 
         fichier.close();
-        cout << "Donnees chargees avec succes depuis " << PF << endl;
+
+        if (nbProfsCharges == 0) {
+            cout << "\n[EXCEPTION] Fichier " << PF << " ne contient aucun professeur valide!" << endl;
+            cout << "[EXCEPTION] La liste restera vide." << endl;
+        }
+        else {
+            cout << "\n[SUCCES] " << nbProfsCharges << " professeur(s) charge(s) avec succes!" << endl;
+        }
     }
 
     // Destructeur
     ~DossierProfesseur() {
+        cout << "\n[INFO] Liberation de la memoire..." << endl;
+        int nbSupprime = 0;
+
         while (tete != nullptr) {
             Professeur* temp = tete;
             tete = tete->suivant;
@@ -150,12 +177,23 @@ public:
             libererEtudiants(temp->listeetudiants);
 
             delete temp;
+            nbSupprime++;
         }
+
+        cout << "[INFO] " << nbSupprime << " professeur(s) libere(s) de la memoire." << endl;
     }
 
     // Supprimer tous les professeurs avec un nom donne
     void supprimer(const char* name) {
+        cout << "\n[INFO] Tentative de suppression du professeur: " << name << endl;
+
+        if (tete == nullptr) {
+            cout << "[EXCEPTION] Impossible de supprimer - la liste est vide!" << endl;
+            return;
+        }
+
         string nomRecherche(name);
+        int nbSupprimes = 0;
 
         // Supprimer en tete de liste
         while (tete != nullptr && tete->nom == nomRecherche) {
@@ -165,6 +203,7 @@ public:
             libererCours(temp->listecours);
             libererEtudiants(temp->listeetudiants);
             delete temp;
+            nbSupprimes++;
         }
 
         // Supprimer dans le reste de la liste
@@ -178,6 +217,7 @@ public:
                     libererCours(temp->listecours);
                     libererEtudiants(temp->listeetudiants);
                     delete temp;
+                    nbSupprimes++;
                 }
                 else {
                     current = current->suivant;
@@ -185,13 +225,27 @@ public:
             }
         }
 
-        cout << "Professeur(s) avec le nom '" << name << "' supprime(s)." << endl;
+        if (nbSupprimes == 0) {
+            cout << "[EXCEPTION] Aucun professeur trouve avec le nom: " << name << endl;
+        }
+        else {
+            cout << "[SUCCES] " << nbSupprimes << " professeur(s) avec le nom '"
+                << name << "' supprime(s)." << endl;
+        }
+
+        // Verifier si la liste est maintenant vide
+        if (tete == nullptr) {
+            listeVide = true;
+            cout << "[ATTENTION] La liste est maintenant vide apres suppression!" << endl;
+        }
     }
 
     // Afficher le professeur avec le plus d'etudiants
     const char* afficherleprofplusetudiant() const {
+        cout << "\n[INFO] Recherche du professeur avec le plus d'etudiants..." << endl;
+
         if (tete == nullptr) {
-            cout << "Aucun professeur dans la liste." << endl;
+            cout << "[EXCEPTION] Impossible - la liste des professeurs est vide!" << endl;
             return nullptr;
         }
 
@@ -199,20 +253,25 @@ public:
         int maxEtudiants = compterEtudiants(tete->listeetudiants);
         int minAnciennete = tete->ancien;
 
+        cout << "[INFO] Candidat initial: " << tete->nom << " (" << maxEtudiants << " etudiants)" << endl;
+
         Professeur* current = tete->suivant;
         while (current != nullptr) {
             int nbEtudiants = compterEtudiants(current->listeetudiants);
+
+            cout << "[INFO] Evaluation: " << current->nom << " (" << nbEtudiants << " etudiants)" << endl;
 
             if (nbEtudiants > maxEtudiants ||
                 (nbEtudiants == maxEtudiants && current->ancien < minAnciennete)) {
                 meilleurProf = current;
                 maxEtudiants = nbEtudiants;
                 minAnciennete = current->ancien;
+                cout << "[INFO] Nouveau meilleur candidat!" << endl;
             }
             current = current->suivant;
         }
 
-        cout << "Professeur avec le plus d'etudiants: " << meilleurProf->nom
+        cout << "[RESULTAT] Professeur avec le plus d'etudiants: " << meilleurProf->nom
             << " (" << maxEtudiants << " etudiants, anciennete: " << meilleurProf->ancien << ")" << endl;
 
         // Retourner une copie statique du nom
@@ -222,15 +281,17 @@ public:
 
     // Afficher le cours le plus demande
     const char* affichercoursplusdemande() const {
+        cout << "\n[INFO] Recherche du cours le plus demande..." << endl;
+
         if (tete == nullptr) {
-            cout << "Aucun professeur dans la liste." << endl;
+            cout << "[EXCEPTION] Impossible - aucun professeur dans la liste!" << endl;
             return nullptr;
         }
 
         // Compter tous les cours
-        string cours[1000];  // Tableau pour stocker les cours
-        int compteurs[1000]; // Compteurs correspondants
-        int anciennetes[1000]; // Anciennetes des premiers professeurs pour chaque cours
+        string cours[20];  // Tableau pour stocker les cours
+        int compteurs[20]; // Compteurs correspondants
+        int anciennetes[20]; // Anciennetes des premiers professeurs pour chaque cours
         int nbCours = 0;
 
         Professeur* prof = tete;
@@ -252,6 +313,7 @@ public:
                     compteurs[nbCours] = 1;
                     anciennetes[nbCours] = prof->ancien;
                     nbCours++;
+                    cout << "[INFO] Nouveau cours detecte: " << coursActuel->nomCours << endl;
                 }
                 else {
                     // Cours existant
@@ -267,13 +329,18 @@ public:
         }
 
         if (nbCours == 0) {
-            cout << "Aucun cours trouve." << endl;
+            cout << "[EXCEPTION] Aucun cours trouve dans toute la liste!" << endl;
             return nullptr;
         }
 
         // Trouver le cours le plus demande
         int maxDemandes = compteurs[0];
         int indexMeilleur = 0;
+
+        cout << "[INFO] Analyse des " << nbCours << " cours detectes:" << endl;
+        for (int i = 0; i < nbCours; i++) {
+            cout << "[INFO] " << cours[i] << ": " << compteurs[i] << " demande(s)" << endl;
+        }
 
         for (int i = 1; i < nbCours; i++) {
             if (compteurs[i] > maxDemandes ||
@@ -283,7 +350,7 @@ public:
             }
         }
 
-        cout << "Cours le plus demande: " << cours[indexMeilleur]
+        cout << "[RESULTAT] Cours le plus demande: " << cours[indexMeilleur]
             << " (" << maxDemandes << " demandes)" << endl;
 
         // Retourner une copie statique du nom
@@ -293,8 +360,16 @@ public:
 
     // Afficher le nombre de professeurs pour un cours donne
     int affichernbreprofpouruncours(const string* coursdonne) const {
-        if (coursdonne == nullptr || tete == nullptr) {
-            cout << "Nombre de professeurs pour le cours " << *coursdonne << ": 0" << endl;
+        cout << "\n[INFO] Recherche du nombre de professeurs pour le cours: " << *coursdonne << endl;
+
+        if (coursdonne == nullptr) {
+            cout << "[EXCEPTION] Nom de cours invalide (pointeur null)!" << endl;
+            return 0;
+        }
+
+        if (tete == nullptr) {
+            cout << "[EXCEPTION] Impossible - la liste des professeurs est vide!" << endl;
+            cout << "[RESULTAT] Nombre de professeurs pour le cours " << *coursdonne << ": 0" << endl;
             return 0;
         }
 
@@ -306,6 +381,7 @@ public:
             while (coursActuel != nullptr) {
                 if (coursActuel->nomCours == *coursdonne) {
                     compteur++;
+                    cout << "[INFO] Professeur " << prof->nom << " enseigne ce cours." << endl;
                     break;  // Ne compter qu'une fois par professeur
                 }
                 coursActuel = coursActuel->suivant;
@@ -313,8 +389,13 @@ public:
             prof = prof->suivant;
         }
 
-        cout << "Nombre de professeurs pour le cours " << *coursdonne
+        cout << "[RESULTAT] Nombre de professeurs pour le cours " << *coursdonne
             << ": " << compteur << endl;
+
+        if (compteur == 0) {
+            cout << "[ATTENTION] Aucun professeur ne souhaite enseigner ce cours!" << endl;
+        }
+
         return compteur;
     }
 
@@ -322,12 +403,20 @@ public:
     void recopier(const char* nomFichierOriginal) {
         string nouveauNom = "PFnew.txt";
 
+        cout << "\n[INFO] Tentative de sauvegarde dans: " << nouveauNom << endl;
+
+        if (tete == nullptr) {
+            cout << "[ATTENTION] La liste est vide - creation d'un fichier vide." << endl;
+        }
+
         ofstream fichier(nouveauNom);
         if (!fichier.is_open()) {
-            cout << "Erreur: Impossible d'ouvrir le fichier " << nouveauNom << " pour l'ecriture." << endl;
+            cout << "[EXCEPTION] Impossible d'ouvrir le fichier " << nouveauNom << " pour l'ecriture!" << endl;
+            cout << "[EXCEPTION] Verifiez les permissions du repertoire." << endl;
             return;
         }
 
+        int nbProfsSauves = 0;
         Professeur* prof = tete;
         while (prof != nullptr) {
             // Ecrire le nom et l'anciennete
@@ -356,15 +445,27 @@ public:
             }
 
             prof = prof->suivant;
+            nbProfsSauves++;
         }
 
         fichier.close();
-        cout << "Liste mise a jour sauvegardee dans: " << nouveauNom << endl;
+        cout << "[SUCCES] " << nbProfsSauves << " professeur(s) sauvegarde(s) dans: " << nouveauNom << endl;
+
+        if (nbProfsSauves == 0) {
+            cout << "[INFO] Fichier " << nouveauNom << " cree mais vide." << endl;
+        }
     }
 
     // Fonction pour afficher la liste (pour debug)
     void afficherListe() const {
         cout << "\n=== LISTE DES PROFESSEURS ===" << endl;
+
+        if (tete == nullptr) {
+            cout << "[EXCEPTION] La liste est actuellement vide!" << endl;
+            cout << "Aucun professeur a afficher." << endl;
+            return;
+        }
+
         Professeur* prof = tete;
         int numero = 1;
 
@@ -373,30 +474,45 @@ public:
 
             cout << "   Cours: ";
             Cours* cours = prof->listecours;
-            while (cours != nullptr) {
-                cout << cours->nomCours;
-                if (cours->suivant != nullptr) cout << ", ";
-                cours = cours->suivant;
+            if (cours == nullptr) {
+                cout << "[AUCUN]";
+            }
+            else {
+                while (cours != nullptr) {
+                    cout << cours->nomCours;
+                    if (cours->suivant != nullptr) cout << ", ";
+                    cours = cours->suivant;
+                }
             }
             cout << endl;
 
             cout << "   Etudiants (" << compterEtudiants(prof->listeetudiants) << "): ";
             Etudiants* etudiant = prof->listeetudiants;
-            while (etudiant != nullptr) {
-                cout << etudiant->nomEtudiant;
-                if (etudiant->suivant != nullptr) cout << ", ";
-                etudiant = etudiant->suivant;
+            if (etudiant == nullptr) {
+                cout << "[AUCUN]";
+            }
+            else {
+                while (etudiant != nullptr) {
+                    cout << etudiant->nomEtudiant;
+                    if (etudiant->suivant != nullptr) cout << ", ";
+                    etudiant = etudiant->suivant;
+                }
             }
             cout << endl << endl;
 
             prof = prof->suivant;
             numero++;
         }
+
+        cout << "[INFO] Total: " << (numero - 1) << " professeur(s) affiches." << endl;
     }
 };
 
 int main() {
+    cout << "=========================================" << endl;
     cout << "=== SYSTEME DE GESTION DES DOSSIERS PROFESSEURS ===" << endl;
+    cout << "=== VERSION AVEC GESTION D'EXCEPTIONS ===" << endl;
+    cout << "=========================================" << endl;
 
     // Creer l'objet DossierProfesseur
     DossierProfesseur dossiers("PF.txt");
@@ -404,64 +520,106 @@ int main() {
     // Afficher la liste initiale
     dossiers.afficherListe();
 
+    cout << "\n=========================================" << endl;
+    cout << "=== TRAITEMENT DU FICHIER DE TRANSACTIONS ===" << endl;
+    cout << "=========================================" << endl;
+
     // Lire les transactions depuis FT.txt
+    cout << "\n[INFO] Tentative d'ouverture du fichier de transactions: FT.txt" << endl;
     ifstream fichierTransactions("FT.txt");
     if (!fichierTransactions.is_open()) {
-        cout << "Erreur: Impossible d'ouvrir FT.txt" << endl;
+        cout << "[EXCEPTION] Impossible d'ouvrir FT.txt!" << endl;
+        cout << "[EXCEPTION] Verifiez que le fichier existe et est accessible." << endl;
+        cout << "[EXCEPTION] Le programme va se terminer." << endl;
         return 1;
     }
 
-    cout << "\n=== EXECUTION DES TRANSACTIONS ===" << endl;
-    string ligne;
-    while (getline(fichierTransactions, ligne)) {
-        if (ligne.empty()) continue;
+    cout << "[INFO] Fichier FT.txt ouvert avec succes." << endl;
 
-        cout << "\nCommande: " << ligne << endl;
+    string ligne;
+    int nbCommandes = 0;
+    int nbCommandesExecutees = 0;
+
+    while (getline(fichierTransactions, ligne)) {
+        if (ligne.empty()) {
+            cout << "[INFO] Ligne vide ignoree." << endl;
+            continue;
+        }
+
+        nbCommandes++;
+        cout << "\n--- COMMANDE " << nbCommandes << " ---" << endl;
+        cout << "[INFO] Commande lue: '" << ligne << "'" << endl;
 
         if (ligne == "*") {
-            // Afficher le cours le plus demande
+            cout << "[INFO] Execution: Afficher le cours le plus demande" << endl;
             dossiers.affichercoursplusdemande();
+            nbCommandesExecutees++;
 
         }
         else if (ligne == "#") {
-            // Afficher le professeur avec le plus d'etudiants
+            cout << "[INFO] Execution: Afficher le professeur avec le plus d'etudiants" << endl;
             dossiers.afficherleprofplusetudiant();
+            nbCommandesExecutees++;
 
         }
         else if (ligne == "$") {
-            // Recopier dans PFnew.txt
+            cout << "[INFO] Execution: Sauvegarder la liste dans PFnew.txt" << endl;
             dossiers.recopier("PF.txt");
+            nbCommandesExecutees++;
 
         }
         else if (ligne.length() > 1 && ligne[0] == '%' && ligne[1] == ' ') {
-            // Extraire le nom du cours apres "% "
+            cout << "[INFO] Execution: Compter les professeurs pour un cours" << endl;
             string cours = ligne.substr(2);
             dossiers.affichernbreprofpouruncours(&cours);
+            nbCommandesExecutees++;
 
         }
         else if (ligne.length() > 1 && ligne[0] == '-' && ligne[1] == ' ') {
-            // Gerer la commande de suppression "- NOM"
+            cout << "[INFO] Execution: Supprimer un professeur" << endl;
             string nomASupprimer = ligne.substr(2);
             dossiers.supprimer(nomASupprimer.c_str());
+            nbCommandesExecutees++;
 
         }
         else if (ligne[0] == '-') {
-            // Alternative: si juste "-NOM" sans espace
+            cout << "[INFO] Execution: Supprimer un professeur (format alternatif)" << endl;
             string nomASupprimer = ligne.substr(1);
             dossiers.supprimer(nomASupprimer.c_str());
+            nbCommandesExecutees++;
 
         }
         else {
-            // Commande non reconnue
-            cout << "Commande non reconnue: " << ligne << endl;
+            cout << "[EXCEPTION] Commande non reconnue ou format incorrect!" << endl;
+            cout << "[EXCEPTION] Commande ignoree: '" << ligne << "'" << endl;
+            cout << "[INFO] Formats valides: '#', '*', '$', '% COURS', '- NOM'" << endl;
         }
     }
 
     fichierTransactions.close();
 
-    cout << "\n=== LISTE FINALE ===" << endl;
+    if (nbCommandes == 0) {
+        cout << "\n[EXCEPTION] Aucune commande trouvee dans FT.txt!" << endl;
+        cout << "[EXCEPTION] Le fichier est vide ou ne contient que des lignes vides." << endl;
+    }
+    else {
+        cout << "\n[INFO] Traitement termine." << endl;
+        cout << "[INFO] " << nbCommandes << " ligne(s) lue(s), "
+            << nbCommandesExecutees << " commande(s) executee(s)." << endl;
+
+        if (nbCommandesExecutees < nbCommandes) {
+            cout << "[ATTENTION] " << (nbCommandes - nbCommandesExecutees)
+                << " commande(s) ignoree(s) a cause d'erreurs!" << endl;
+        }
+    }
+
+    cout << "\n=========================================" << endl;
+    cout << "=== ETAT FINAL DU SYSTEME ===" << endl;
+    cout << "=========================================" << endl;
     dossiers.afficherListe();
 
-    cout << "\nProgramme termine avec succes!" << endl;
+    cout << "\n=========================================" << endl;
+    cout << "[SUCCES] Programme termine avec succes!" << endl;
+    cout << "=========================================" << endl;
     return 0;
 }

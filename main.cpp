@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <cstdlib>
 using namespace std;
 
 // Structure pour les cours
@@ -36,7 +37,7 @@ private:
     Professeur* tete;
     bool listeVide;
 
-    // Fonction pour compter les etudiants d'un professeur
+    // Fonction auxiliaire pour compter les etudiants d'un professeur
     int compterEtudiants(Etudiants* liste) const {
         int count = 0;
         while (liste != nullptr) {
@@ -46,7 +47,7 @@ private:
         return count;
     }
 
-    // Fonction pour liberer la memoire d'une liste de cours
+    // Fonction auxiliaire pour liberer la memoire d'une liste de cours
     void libererCours(Cours* cours) {
         while (cours != nullptr) {
             Cours* temp = cours;
@@ -55,7 +56,7 @@ private:
         }
     }
 
-    // Fonction pour liberer la memoire d'une liste d'etudiants
+    // Fonction auxiliaire pour liberer la memoire d'une liste d'etudiants
     void libererEtudiants(Etudiants* etudiants) {
         while (etudiants != nullptr) {
             Etudiants* temp = etudiants;
@@ -64,7 +65,7 @@ private:
         }
     }
 
-    // Fonction pour ajouter a la fin de la liste (maintenir l'ordre)
+    // Fonction auxiliaire pour ajouter a la fin de la liste (maintenir l'ordre)
     void ajouterALaFin(Professeur* nouveauProf) {
         if (tete == nullptr) {
             tete = nouveauProf;
@@ -289,9 +290,9 @@ public:
         }
 
         // Compter tous les cours
-        string cours[20];  // Tableau pour stocker les cours
-        int compteurs[20]; // Compteurs correspondants
-        int anciennetes[20]; // Anciennetes des premiers professeurs pour chaque cours
+        string cours[1000];  // Tableau pour stocker les cours
+        int compteurs[1000]; // Compteurs correspondants
+        int anciennetes[1000]; // Anciennetes des premiers professeurs pour chaque cours
         int nbCours = 0;
 
         Professeur* prof = tete;
@@ -508,6 +509,21 @@ public:
     }
 };
 
+// Fonction pour pause multi-plateforme
+void pauseProgram() {
+    cout << "\n=========================================" << endl;
+    cout << "Programme termine!" << endl;
+    cout << "Appuyez sur ENTREE pour fermer..." << endl;
+    cout << "=========================================" << endl;
+
+    // Vider le buffer d'entrée au cas où
+    cin.clear();
+    cin.ignore(1000, '\n');
+
+    // Attendre que l'utilisateur appuie sur Entrée
+    cin.get();
+}
+
 int main() {
     cout << "=========================================" << endl;
     cout << "=== SYSTEME DE GESTION DES DOSSIERS PROFESSEURS ===" << endl;
@@ -531,6 +547,9 @@ int main() {
         cout << "[EXCEPTION] Impossible d'ouvrir FT.txt!" << endl;
         cout << "[EXCEPTION] Verifiez que le fichier existe et est accessible." << endl;
         cout << "[EXCEPTION] Le programme va se terminer." << endl;
+
+        // Pause avant de fermer en cas d'erreur
+        pauseProgram();
         return 1;
     }
 
@@ -619,7 +638,12 @@ int main() {
     dossiers.afficherListe();
 
     cout << "\n=========================================" << endl;
-    cout << "[SUCCES] Programme termine avec succes!" << endl;
+    cout << "[SUCCES] Toutes les operations terminees avec succes!" << endl;
+    cout << "Fichier PFnew.txt genere (si commande $ executee)." << endl;
     cout << "=========================================" << endl;
+
+    // NOUVELLE FONCTIONNALITÉ: Pause avant fermeture
+    pauseProgram();
+
     return 0;
 }
